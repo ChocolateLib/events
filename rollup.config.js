@@ -7,7 +7,7 @@ export default [
         plugins: [typescript()],
         output: [
             {
-                file: `dist/cjs.js`,
+                file: `dist/index.cjs`,
                 format: 'cjs',
             },
         ]
@@ -16,7 +16,7 @@ export default [
         plugins: [typescript()],
         output: [
             {
-                file: `dist/esm.js`,
+                file: `dist/index.js`,
                 format: 'es',
             },
         ]
@@ -25,7 +25,7 @@ export default [
         plugins: [dts()],
         output: [
             {
-                file: `dist/types.d.ts`,
+                file: `dist/index.d.ts`,
                 format: 'es',
             },
         ]
