@@ -29,15 +29,22 @@ interface ListenerStorage<K, Handler, Type> {
     funcs: ESubListener<K, Handler, Type>[],
 }
 
+
 type SubPath = [string, ...string[]];
 
+/**Performs type override */
+type TargetOverride<Types extends {}, T> = T extends [never] ? EventHandlerSub<Types> : T
+
+
 /**Extension to event handler with support for sub events*/
-export class EventHandlerSub<Types extends {}> {
+export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
+    /**Override for target */
+    target: Target | undefined
     /**Storage for sub event listeners*/
-    private eventHandler_ListenerStorage: { [K in keyof Types]?: ListenerStorage<K, this, Types[K]> } = {}
+    private eventHandler_ListenerStorage: { [K in keyof Types]?: ListenerStorage<K, TargetOverride<Types, Target>, Types[K]> } = {}
 
     /**This add the listener to the event handler */
-    on<K extends keyof Types>(type: K, listener: ESubListener<K, this, Types[K]>, sub?: SubPath) {
+    on<K extends keyof Types>(type: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>, sub?: SubPath) {
         let subLevel = this.eventHandler_ListenerStorage[type];
         if (!subLevel) {
             subLevel = this.eventHandler_ListenerStorage[type] = { subs: {}, funcs: [] };
@@ -63,7 +70,7 @@ export class EventHandlerSub<Types extends {}> {
     }
 
     /**This add the listener to the event handler which is automatically removed at first call */
-    once<K extends keyof Types>(eventName: K, listener: ESubListener<K, this, Types[K]>, sub?: SubPath) {
+    once<K extends keyof Types>(eventName: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>, sub?: SubPath) {
         this.on(eventName, function (e) {
             listener(e);
             return true;
@@ -72,7 +79,7 @@ export class EventHandlerSub<Types extends {}> {
     }
 
     /**This removes the listener from the event handler */
-    off<K extends keyof Types>(type: K, listener: ESubListener<K, this, Types[K]>, sub?: SubPath) {
+    off<K extends keyof Types>(type: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>, sub?: SubPath) {
         var subLevel = this.eventHandler_ListenerStorage[type];
         if (subLevel) {
             if (sub) {
@@ -116,7 +123,8 @@ export class EventHandlerSub<Types extends {}> {
             var funcs = this.eventHandler_ListenerStorage[type]?.funcs;
         }
         if (funcs && funcs.length > 0) {
-            let event = Object.freeze(new ESub<K, this, Types[K]>(type, this, data, sub));
+            //@ts-expect-error
+            let event = Object.freeze(new ESub<K, TargetOverride<Types, Target>, Types[K]>(type, this.target || this, data, sub));
             if (funcs.length > 1) {
                 funcs = [...funcs];
             }
@@ -190,7 +198,7 @@ export class EventHandlerSub<Types extends {}> {
     }
 
     /**Returns wether the type has a specific listeners, true means it has that listener */
-    has<K extends keyof Types>(type: K, listener: ESubListener<K, this, Types[K]>, sub?: SubPath) {
+    has<K extends keyof Types>(type: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>, sub?: SubPath) {
         let typeBuff = this.eventHandler_ListenerStorage[type];
         if (typeBuff) {
             if (sub) {

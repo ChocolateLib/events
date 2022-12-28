@@ -204,4 +204,25 @@ describe('Sub Event Handler', function () {
             expect(handler.amount('test', ['test'])).toStrictEqual(2);
         });
     });
+
+
+    describe('Target override', function () {
+        it('Target override event', function (done) {
+            let target = {
+                test1: 5,
+                test2: 'string'
+            }
+            let handler = new EventHandlerSub<{ test: number }, typeof target>();
+            handler.target = target;
+            handler.on("test", (e) => {
+                expect(e.type).toStrictEqual('test');
+                expect(e.target).toStrictEqual(target);
+                expect(e.data).toStrictEqual(10);
+                expect(e.target.test1).toStrictEqual(5);
+                expect(e.target.test2).toStrictEqual('string');
+                done()
+            });
+            handler.emit('test', 10);
+        });
+    });
 });
