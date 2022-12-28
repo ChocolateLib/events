@@ -1,8 +1,11 @@
 /**Event class
  * contains the needed data to dispatch an event*/
 export class E<Type, Handler, Data>{
+    /**Type of event */
     public readonly type: Type;
+    /**Reference to */
     public readonly target: Handler;
+    /**Data of event */
     public readonly data: Data;
     /**Any data to pass to the event listeners must be given in the constructor*/
     constructor(type: Type, target: Handler, data: Data) {
@@ -12,7 +15,7 @@ export class E<Type, Handler, Data>{
     }
 }
 
-//Listener function 
+/**Listener function */
 export interface EListener<Type, Handler, Data> {
     (event: E<Type, Handler, Data>): boolean | void;
 }
@@ -20,10 +23,10 @@ export interface EListener<Type, Handler, Data> {
 /*Simple event handler class
 should always be added as a property of another object*/
 export class EventHandler<Types extends {}> {
-    //Storage for event listeners
+    /**Storage for event listeners*/
     private eventHandler_ListenerStorage: { [K in keyof Types]?: EListener<K, this, Types[K]>[] } = {}
 
-    //This add the listener to the event handler
+    /**This add the listener to the event handler*/
     on<K extends keyof Types>(eventName: K, listener: EListener<K, this, Types[K]>) {
         let typeListeners = this.eventHandler_ListenerStorage[eventName];
         if (typeListeners) {
@@ -39,7 +42,7 @@ export class EventHandler<Types extends {}> {
         return listener;
     }
 
-    //This add the listener to the event handler which is automatically removed at first call
+    /**This add the listener to the event handler which is automatically removed at first call*/
     once<K extends keyof Types>(eventName: K, listener: EListener<K, this, Types[K]>) {
         this.on(eventName, function (e) {
             listener(e);
@@ -48,7 +51,7 @@ export class EventHandler<Types extends {}> {
         return listener;
     }
 
-    //This removes the listener from the event handler
+    /**This removes the listener from the event handler*/
     off<K extends keyof Types>(eventName: K, listener: EListener<K, this, Types[K]>) {
         let typeListeners = this.eventHandler_ListenerStorage[eventName];
         if (typeListeners) {
@@ -62,7 +65,7 @@ export class EventHandler<Types extends {}> {
         }
     }
 
-    //This dispatches the event, event data is frozen
+    /**This dispatches the event, event data is frozen*/
     emit<K extends keyof Types>(eventName: K, data: Types[K]) {
         let funcs = this.eventHandler_ListenerStorage[eventName];
         if (funcs && funcs.length > 0) {
@@ -84,22 +87,22 @@ export class EventHandler<Types extends {}> {
         }
     }
 
-    //This removes all listeners of a type from the event handler
+    /**This removes all listeners of a type from the event handler*/
     clear<K extends keyof Types>(eventName: K) {
         this.eventHandler_ListenerStorage[eventName] = [];
     }
 
-    //Returns wether the type has listeners, true means it has at least a listener
+    /**Returns wether the type has listeners, true means it has at least a listener*/
     inUse<K extends keyof Types>(eventName: K) {
         return Boolean(this.eventHandler_ListenerStorage[eventName]?.length);
     }
 
-    //Returns wether the type has a specific listeners, true means it has that listener
+    /**Returns wether the type has a specific listeners, true means it has that listener*/
     has<K extends keyof Types>(eventName: K, listener: EListener<K, this, Types[K]>) {
         return Boolean(this.eventHandler_ListenerStorage[eventName]?.indexOf(listener) !== -1);
     }
 
-    //Returns the amount of listeners on that event
+    /**Returns the amount of listeners on that event*/
     amount<K extends keyof Types>(eventName: K) {
         return this.eventHandler_ListenerStorage[eventName]?.length || 0;
     }

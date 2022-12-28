@@ -1,10 +1,13 @@
-import { objectCheckNotEmpty } from "./shared";
-
-//Container for event data
+/**Event class
+ * contains the needed data to dispatch an event*/
 export class ESub<Type, Handler, Data>{
+    /**Type of event */
     public readonly type: Type;
+    /**Reference to */
     public readonly target: Handler;
+    /**Path to sub event */
     public readonly sub?: SubPath;
+    /**Data of event */
     public readonly data: Data;
     /**Any data to pass to the event listeners must be given in the constructor*/
     constructor(type: Type, target: Handler, data: Data, sub?: SubPath) {
@@ -15,12 +18,12 @@ export class ESub<Type, Handler, Data>{
     }
 }
 
-//Listener function 
+/**Listener function */
 export interface ESubListener<Type, Handler, Data> {
     (event: ESub<Type, Handler, Data>): boolean | void;
 }
 
-//Type for storage of listeners in event handler
+/**Type for storage of listeners in event handler */
 interface ListenerStorage<K, Handler, Type> {
     subs: { [key: string]: ListenerStorage<K, Handler, Type> },
     funcs: ESubListener<K, Handler, Type>[],
@@ -28,12 +31,12 @@ interface ListenerStorage<K, Handler, Type> {
 
 type SubPath = [string, ...string[]];
 
-//Extension to event handler with support for sub events
+/**Extension to event handler with support for sub events*/
 export class EventHandlerSub<Types extends {}> {
-    //Storage for sub event listeners
+    /**Storage for sub event listeners*/
     private eventHandler_ListenerStorage: { [K in keyof Types]?: ListenerStorage<K, this, Types[K]> } = {}
 
-    //This add the listener to the event handler
+    /**This add the listener to the event handler */
     on<K extends keyof Types>(type: K, listener: ESubListener<K, this, Types[K]>, sub?: SubPath) {
         let subLevel = this.eventHandler_ListenerStorage[type];
         if (!subLevel) {
@@ -59,7 +62,7 @@ export class EventHandlerSub<Types extends {}> {
         return listener;
     }
 
-    //This add the listener to the event handler which is automatically removed at first call
+    /**This add the listener to the event handler which is automatically removed at first call */
     once<K extends keyof Types>(eventName: K, listener: ESubListener<K, this, Types[K]>, sub?: SubPath) {
         this.on(eventName, function (e) {
             listener(e);
@@ -68,7 +71,7 @@ export class EventHandlerSub<Types extends {}> {
         return listener;
     }
 
-    //This removes the listener from the event handler
+    /**This removes the listener from the event handler */
     off<K extends keyof Types>(type: K, listener: ESubListener<K, this, Types[K]>, sub?: SubPath) {
         var subLevel = this.eventHandler_ListenerStorage[type];
         if (subLevel) {
@@ -94,7 +97,7 @@ export class EventHandlerSub<Types extends {}> {
         return listener;
     }
 
-    //This dispatches the event, event data is frozen
+    /**This dispatches the event, event data is frozen */
     emit<K extends keyof Types>(type: K, data: Types[K], sub?: SubPath) {
         if (sub) {
             var subLevel = this.eventHandler_ListenerStorage[type];
@@ -131,7 +134,7 @@ export class EventHandlerSub<Types extends {}> {
         }
     }
 
-    //This removes all listeners of a type from the event handler
+    /**This removes all listeners of a type from the event handler */
     clear<K extends keyof Types>(type: K, sub?: SubPath, anyLevel?: boolean) {
         let typeBuff = this.eventHandler_ListenerStorage[type];
         if (typeBuff) {
@@ -166,7 +169,7 @@ export class EventHandlerSub<Types extends {}> {
         }
     }
 
-    //Returns wether the type has listeners, true means it has at least a listener
+    /**Returns wether the type has listeners, true means it has at least a listener */
     inUse<K extends keyof Types>(type: K, sub?: SubPath) {
         let typeBuff = this.eventHandler_ListenerStorage[type];
         if (typeBuff) {
@@ -186,7 +189,7 @@ export class EventHandlerSub<Types extends {}> {
         }
     }
 
-    //Returns wether the type has a specific listeners, true means it has that listener
+    /**Returns wether the type has a specific listeners, true means it has that listener */
     has<K extends keyof Types>(type: K, listener: ESubListener<K, this, Types[K]>, sub?: SubPath) {
         let typeBuff = this.eventHandler_ListenerStorage[type];
         if (typeBuff) {
@@ -206,7 +209,7 @@ export class EventHandlerSub<Types extends {}> {
         }
     }
 
-    //Returns the amount of listeners on that event
+    /**Returns the amount of listeners on that event */
     amount<K extends keyof Types>(type: K, sub?: SubPath) {
         let typeBuff = this.eventHandler_ListenerStorage[type];
         if (typeBuff) {
