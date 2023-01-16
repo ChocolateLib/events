@@ -66,8 +66,8 @@ export class EventHandler<Types extends {}, Target extends {} = [never]> {
             } else {
                 console.warn('Listener not in handler');
             }
-            return listener;
         }
+        return listener;
     }
 
     /**This dispatches the event, event data is frozen*/
@@ -112,4 +112,15 @@ export class EventHandler<Types extends {}, Target extends {} = [never]> {
     amount<K extends keyof Types>(eventName: K) {
         return this.eventHandler_ListenerStorage[eventName]?.length || 0;
     }
+
+    /**Returns the eventhandler with only the event user methods */
+    get eventsUserOnly(): EventHandlerEvents<Types, Target> {
+        return this
+    }
+}
+
+interface EventHandlerEvents<Types extends {}, Target> {
+    on<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>): EListener<K, TargetOverride<Types, Target>, Types[K]>
+    once<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>): EListener<K, TargetOverride<Types, Target>, Types[K]>
+    off<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>): EListener<K, TargetOverride<Types, Target>, Types[K]>
 }
