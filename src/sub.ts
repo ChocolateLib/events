@@ -238,19 +238,13 @@ export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
     }
 
     /**Returns the eventhandler with only the event user methods */
-    get eventsUserOnly(): EventHandlerEvents<Types, Target> {
+    get eventsUserOnly(): EventHandlerSubUserOnly<Types, Target> {
         return this
     }
 }
 
-interface EventHandlerEvents<Types extends {}, Target> {
+export interface EventHandlerSubUserOnly<Types extends {}, Target> {
     on<K extends keyof Types>(eventName: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>): ESubListener<K, TargetOverride<Types, Target>, Types[K]>
     once<K extends keyof Types>(eventName: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>): ESubListener<K, TargetOverride<Types, Target>, Types[K]>
     off<K extends keyof Types>(eventName: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>): ESubListener<K, TargetOverride<Types, Target>, Types[K]>
 }
-
-let test = new EventHandlerSub<{
-    test: number
-}>
-
-export let asdf = test.eventsUserOnly

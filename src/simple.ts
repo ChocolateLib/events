@@ -114,12 +114,12 @@ export class EventHandler<Types extends {}, Target extends {} = [never]> {
     }
 
     /**Returns the eventhandler with only the event user methods */
-    get eventsUserOnly(): EventHandlerEvents<Types, Target> {
+    get eventsUserOnly(): EventHandlerUserOnly<Types, Target> {
         return this
     }
 }
 
-interface EventHandlerEvents<Types extends {}, Target> {
+export interface EventHandlerUserOnly<Types extends {}, Target> {
     on<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>): EListener<K, TargetOverride<Types, Target>, Types[K]>
     once<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>): EListener<K, TargetOverride<Types, Target>, Types[K]>
     off<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>): EListener<K, TargetOverride<Types, Target>, Types[K]>
