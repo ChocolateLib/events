@@ -1,6 +1,0 @@
-{
-    "jest.autoRun": {
-        "watch": false,
-        "onSave": "test-only",
-    },
-}

@@ -1,53 +1,68 @@
+/**Path to subevent */
+type SubPath = [string, ...string[]];
+
 /**Event class
  * contains the needed data to dispatch an event*/
-export class ESub<Type, Handler, Data>{
-    /**Type of event */
-    public readonly type: Type;
-    /**Reference to */
-    public readonly target: Handler;
-    /**Path to sub event */
-    public readonly sub?: SubPath;
-    /**Data of event */
-    public readonly data: Data;
+export class ESub<Type, Target, Data>{
     /**Any data to pass to the event listeners must be given in the constructor*/
-    constructor(type: Type, target: Handler, data: Data, sub?: SubPath) {
+    constructor(type: Type, target: Target, data: Data, sub?: SubPath) {
         this.type = type;
         this.target = target;
         this.data = data;
         this.sub = sub;
     }
+    /**Type of event */
+    public readonly type: Type;
+    /**Reference to */
+    public readonly target: Target;
+    /**Path to sub event */
+    public readonly sub?: SubPath;
+    /**Data of event */
+    public readonly data: Data;
 }
 
-/**Listener function */
-export interface ESubListener<Type, Handler, Data> {
-    (event: ESub<Type, Handler, Data>): boolean | void;
+/**Function used to subscribe to event*/
+export type ESubSubscriber<Type, Target, Data> = (event: ESub<Type, Target | undefined, Data>) => boolean | void;
+
+export interface EventSubConsumer<Events extends {}, Target> {
+    /**This add the subscriber to the event handler*/
+    on<K extends keyof Events>(eventName: K, subscriber: ESubSubscriber<K, Target, Events[K]>, sub?: SubPath): typeof subscriber
+    /**This add the subscriber to the event handler which is automatically removed at first call*/
+    once<K extends keyof Events>(eventName: K, subscriber: ESubSubscriber<K, Target, Events[K]>, sub?: SubPath): typeof subscriber
+    /**This removes the subscriber from the event handler*/
+    off<K extends keyof Events>(eventName: K, subscriber: ESubSubscriber<K, Target, Events[K]>, sub?: SubPath): typeof subscriber
 }
+
+export interface EventSubProducer<Events extends {}, Target> extends EventSubConsumer<Events, Target> {
+    /**Override for target */
+    target: Target | undefined
+    /**This dispatches the event, event data is frozen*/
+    emit<K extends keyof Events>(eventName: K, data: Events[K], sub?: SubPath): void
+    /**This removes all listeners of a type from the event handler*/
+    clear<K extends keyof Events>(eventName: K, sub?: SubPath, anyLevel?: boolean): void
+    /**Returns wether the type has listeners, true means it has at least a listener*/
+    inUse<K extends keyof Events>(eventName: K, sub?: SubPath): boolean
+    /**Returns wether the type has a specific listeners, true means it has that listener*/
+    has<K extends keyof Events>(eventName: K, subscriber: ESubSubscriber<K, Target, Events[K]>, sub?: SubPath): boolean
+    /**Returns the amount of listeners on that event*/
+    amount<K extends keyof Events>(eventName: K, sub?: SubPath): number
+}
+
 
 /**Type for storage of listeners in event handler */
 interface ListenerStorage<K, Handler, Type> {
     subs: { [key: string]: ListenerStorage<K, Handler, Type> },
-    funcs: ESubListener<K, Handler, Type>[],
+    funcs: ESubSubscriber<K, Handler, Type>[],
 }
 
-
-type SubPath = [string, ...string[]];
-
-/**Performs type override */
-type TargetOverride<Types extends {}, T> = T extends [never] ? EventHandlerSub<Types> : T
-
-
 /**Extension to event handler with support for sub events*/
-export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
-    /**Override for target */
+export class EventHandlerSub<Events extends {}, Target> implements EventSubProducer<Events, Target> {
     target: Target | undefined
-    /**Storage for sub event listeners*/
-    private eventHandler_ListenerStorage: { [K in keyof Types]?: ListenerStorage<K, TargetOverride<Types, Target>, Types[K]> } = {}
-
-    /**This add the listener to the event handler */
-    on<K extends keyof Types>(type: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>, sub?: SubPath) {
-        let subLevel = this.eventHandler_ListenerStorage[type];
+    private eventHandler_ListenerStorage: { [K in keyof Events]?: ListenerStorage<K, Target, Events[K]> } = {}
+    on<K extends keyof Events>(eventName: K, subscriber: ESubSubscriber<K, Target, Events[K]>, sub?: SubPath): typeof subscriber {
+        let subLevel = this.eventHandler_ListenerStorage[eventName];
         if (!subLevel) {
-            subLevel = this.eventHandler_ListenerStorage[type] = { subs: {}, funcs: [] };
+            subLevel = this.eventHandler_ListenerStorage[eventName] = { subs: {}, funcs: [] };
         }
         if (sub) {
             for (let i = 0; i < sub.length; i++) {
@@ -60,27 +75,23 @@ export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
             }
         }
         var typeListeners = subLevel!.funcs;
-        let index = typeListeners.indexOf(listener);
+        let index = typeListeners.indexOf(subscriber);
         if (index == -1) {
-            typeListeners.push(listener);
+            typeListeners.push(subscriber);
         } else {
-            console.warn('Listener already in handler');
+            console.warn('Subscriber already in handler');
         }
-        return listener;
+        return subscriber;
     }
-
-    /**This add the listener to the event handler which is automatically removed at first call */
-    once<K extends keyof Types>(eventName: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>, sub?: SubPath) {
+    once<K extends keyof Events>(eventName: K, subscriber: ESubSubscriber<K, Target, Events[K]>, sub?: SubPath): typeof subscriber {
         this.on(eventName, function (e) {
-            listener(e);
+            subscriber(e);
             return true;
         }, sub);
-        return listener;
+        return subscriber;
     }
-
-    /**This removes the listener from the event handler */
-    off<K extends keyof Types>(type: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>, sub?: SubPath) {
-        var subLevel = this.eventHandler_ListenerStorage[type];
+    off<K extends keyof Events>(eventName: K, subscriber: ESubSubscriber<K, Target, Events[K]>, sub?: SubPath): typeof subscriber {
+        var subLevel = this.eventHandler_ListenerStorage[eventName];
         if (subLevel) {
             if (sub) {
                 for (let i = 0; i < sub.length; i++) {
@@ -88,26 +99,24 @@ export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
                     if (subLevelBuffer) {
                         subLevel = subLevelBuffer;
                     } else {
-                        console.warn('Listener not in handler');
-                        return listener;
+                        console.warn('Subscriber not in handler');
+                        return subscriber;
                     }
                 }
             }
             var typeListeners = subLevel!.funcs;
-            let index = typeListeners.indexOf(listener);
+            let index = typeListeners.indexOf(subscriber);
             if (index != -1) {
                 typeListeners.splice(index, 1);
             } else {
-                console.warn('Listener not in handler');
+                console.warn('Subscriber not in handler');
             }
         }
-        return listener;
+        return subscriber;
     }
-
-    /**This dispatches the event, event data is frozen */
-    emit<K extends keyof Types>(type: K, data: Types[K], sub?: SubPath) {
+    emit<K extends keyof Events>(eventName: K, data: Events[K], sub?: SubPath): void {
         if (sub) {
-            var subLevel = this.eventHandler_ListenerStorage[type];
+            var subLevel = this.eventHandler_ListenerStorage[eventName];
             if (subLevel) {
                 for (let i = 0; i < sub.length; i++) {
                     let subLevelBuffer = subLevel!.subs[sub[i]];
@@ -120,17 +129,16 @@ export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
             }
             var funcs = subLevel?.funcs;
         } else {
-            var funcs = this.eventHandler_ListenerStorage[type]?.funcs;
+            var funcs = this.eventHandler_ListenerStorage[eventName]?.funcs;
         }
         if (funcs && funcs.length > 0) {
-            //@ts-expect-error
-            let event = Object.freeze(new ESub<K, TargetOverride<Types, Target>, Types[K]>(type, this.target || this, data, sub));
+            let event = Object.freeze(new ESub<K, Target | undefined, Events[K]>(eventName, this.target, data, sub));
             if (funcs.length > 1) {
                 funcs = [...funcs];
             }
             for (let i = 0, n = funcs.length; i < n; i++) {
                 try {
-                    if (funcs[i](event)) {
+                    if (funcs[i](event) === true) {
                         funcs.splice(i, 1);
                         n--;
                         i--;
@@ -141,10 +149,8 @@ export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
             }
         }
     }
-
-    /**This removes all listeners of a type from the event handler */
-    clear<K extends keyof Types>(type: K, sub?: SubPath, anyLevel?: boolean) {
-        let typeBuff = this.eventHandler_ListenerStorage[type];
+    clear<K extends keyof Events>(eventName: K, sub?: SubPath, anyLevel?: boolean): void {
+        let typeBuff = this.eventHandler_ListenerStorage[eventName];
         if (typeBuff) {
             if (anyLevel) {
                 if (sub) {
@@ -159,7 +165,7 @@ export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
                     }
                     subLevel!.subs[sub[i]] = { subs: {}, funcs: [] };
                 } else {
-                    this.eventHandler_ListenerStorage[type] = { subs: {}, funcs: [] };
+                    this.eventHandler_ListenerStorage[eventName] = { subs: {}, funcs: [] };
                 }
             } else {
                 if (sub) {
@@ -176,10 +182,8 @@ export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
             }
         }
     }
-
-    /**Returns wether the type has listeners, true means it has at least a listener */
-    inUse<K extends keyof Types>(type: K, sub?: SubPath) {
-        let typeBuff = this.eventHandler_ListenerStorage[type];
+    inUse<K extends keyof Events>(eventName: K, sub?: SubPath): boolean {
+        let typeBuff = this.eventHandler_ListenerStorage[eventName];
         if (typeBuff) {
             if (sub) {
                 for (let i = 0; i < sub.length; i++) {
@@ -196,10 +200,8 @@ export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
             return false;
         }
     }
-
-    /**Returns wether the type has a specific listeners, true means it has that listener */
-    has<K extends keyof Types>(type: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>, sub?: SubPath) {
-        let typeBuff = this.eventHandler_ListenerStorage[type];
+    has<K extends keyof Events>(eventName: K, subscriber: ESubSubscriber<K, Target, Events[K]>, sub?: SubPath): boolean {
+        let typeBuff = this.eventHandler_ListenerStorage[eventName];
         if (typeBuff) {
             if (sub) {
                 for (let i = 0; i < sub.length; i++) {
@@ -211,15 +213,13 @@ export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
                     }
                 }
             }
-            return Boolean(typeBuff.funcs.indexOf(listener) !== -1);
+            return Boolean(typeBuff.funcs.indexOf(subscriber) !== -1);
         } else {
             return false;
         }
     }
-
-    /**Returns the amount of listeners on that event */
-    amount<K extends keyof Types>(type: K, sub?: SubPath) {
-        let typeBuff = this.eventHandler_ListenerStorage[type];
+    amount<K extends keyof Events>(eventName: K, sub?: SubPath): number {
+        let typeBuff = this.eventHandler_ListenerStorage[eventName];
         if (typeBuff) {
             if (sub) {
                 for (let i = 0; i < sub.length; i++) {
@@ -227,7 +227,7 @@ export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
                     if (subLevelBuffer) {
                         typeBuff = subLevelBuffer;
                     } else {
-                        return false;
+                        return 0;
                     }
                 }
             }
@@ -236,15 +236,18 @@ export class EventHandlerSub<Types extends {}, Target extends {} = [never]> {
             return 0;
         }
     }
-
-    /**Returns the eventhandler with only the event user methods */
-    get eventsUserOnly(): EventHandlerSubUserOnly<Types, Target> {
-        return this
-    }
 }
 
-export interface EventHandlerSubUserOnly<Types extends {}, Target> {
-    on<K extends keyof Types>(eventName: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>): ESubListener<K, TargetOverride<Types, Target>, Types[K]>
-    once<K extends keyof Types>(eventName: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>): ESubListener<K, TargetOverride<Types, Target>, Types[K]>
-    off<K extends keyof Types>(eventName: K, listener: ESubListener<K, TargetOverride<Types, Target>, Types[K]>): ESubListener<K, TargetOverride<Types, Target>, Types[K]>
+/**Creates an event handler
+ * @param target is the owner of the event handler, the event consumers might need this to perform their actions
+*/
+export const createEventHandlerSub = <Events extends {}, Target>(target?: Target) => {
+    let handler = new EventHandlerSub();
+    if (target) {
+        handler.target = target;
+    }
+    return {
+        producer: handler as EventSubProducer<Events, Target>,
+        consumer: handler as EventSubConsumer<Events, Target>,
+    }
 }
