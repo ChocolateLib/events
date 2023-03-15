@@ -16,7 +16,7 @@ export class E<Type, Target, Data>{
 }
 
 /**Function used to subscribe to event*/
-export type ESubscriber<Type, Target, Data> = (event: E<Type, Target | undefined, Data>) => boolean | void;
+export type ESubscriber<Type, Target, Data> = (event: E<Type, Target, Data>) => boolean | void;
 
 export interface EventConsumer<Events extends {}, Target> {
     /**This add the subscriber to the event handler*/
@@ -43,7 +43,10 @@ export interface EventProducer<Events extends {}, Target> extends EventConsumer<
 }
 
 export class EventHandler<Events extends {}, Target> implements EventProducer<Events, Target> {
-    target: Target | undefined
+    constructor(target: Target) {
+        this.target = target;
+    }
+    target: Target
     private eventHandler_ListenerStorage: { [K in keyof Events]?: ESubscriber<K, Target, Events[K]>[] } = {}
 
     on<K extends keyof Events>(eventName: K, subscriber: ESubscriber<K, Target, Events[K]>): typeof subscriber {
@@ -85,7 +88,7 @@ export class EventHandler<Events extends {}, Target> implements EventProducer<Ev
     emit<K extends keyof Events>(eventName: K, data: Events[K]) {
         let funcs = this.eventHandler_ListenerStorage[eventName];
         if (funcs && funcs.length > 0) {
-            let event = Object.freeze(new E<K, Target | undefined, Events[K]>(eventName, this.target, data));
+            let event = Object.freeze(new E<K, Target, Events[K]>(eventName, this.target, data));
             if (funcs.length > 1) {
                 funcs = [...funcs];
             }
@@ -121,13 +124,10 @@ export class EventHandler<Events extends {}, Target> implements EventProducer<Ev
 }
 
 /**Creates an event handler
- * @param target is the owner of the event handler, the event consumers might need this to perform their actions
-*/
-export const createEventHandler = <Events extends {}, Target = undefined>(target?: Target) => {
-    let handler = new EventHandler();
-    if (target) {
-        handler.target = target;
-    }
+ * @param target is the owner of the event handler, the event consumers might need this to perform their actions*/
+export const createEventHandler = <Events extends {}, Target>(target: Target) => {
+    let handler = new EventHandler(target);
+    handler.target = target;
     return {
         producer: handler as EventProducer<Events, Target>,
         consumer: handler as EventConsumer<Events, Target>,

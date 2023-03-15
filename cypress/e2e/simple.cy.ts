@@ -3,10 +3,10 @@ import { createEventHandler } from "../../src"
 
 describe('Init', function () {
     it('Create Simple Event Handler', function () {
-        let handler = createEventHandler();
+        let handler = createEventHandler(undefined);
     });
     it('Create Simple Event Handler With Types', function () {
-        let handler = createEventHandler<{ test: number }>();
+        let handler = createEventHandler<{ test: number }, undefined>(undefined);
         handler.consumer.on('test', (e) => {
             e.type;
             e.target;
@@ -17,13 +17,13 @@ describe('Init', function () {
 
 describe('Adding and removing listeners', function () {
     it('Checking if listener is added to handler with single type', function () {
-        let handler = createEventHandler<{ test: number }>();
+        let handler = createEventHandler<{ test: number }, undefined>(undefined);
         expect(handler.producer.inUse('test')).equal(false);
         handler.consumer.on("test", () => { });
         expect(handler.producer.inUse('test')).equal(true);
     });
     it('Checking if listener is added to handler with multiple types', function () {
-        let handler = createEventHandler<{ test: number, test2: number, test3: number }>();
+        let handler = createEventHandler<{ test: number, test2: number, test3: number }, undefined>(undefined);
         expect(handler.producer.inUse('test')).equal(false);
         handler.consumer.on("test", () => { });
         expect(handler.producer.inUse('test')).equal(true);
@@ -35,20 +35,20 @@ describe('Adding and removing listeners', function () {
         expect(handler.producer.inUse('test3')).equal(true);
     });
     it('Checking if listener is added to handler with single type and specific listener', function () {
-        let handler = createEventHandler<{ test: number }>();
+        let handler = createEventHandler<{ test: number }, undefined>(undefined);
         expect(handler.producer.inUse('test')).equal(false);
         let lis = handler.consumer.on("test", () => { });
         expect(handler.producer.has('test', lis)).equal(true);
     });
     it('Checking if listener is removed from handler with single type', function () {
-        let handler = createEventHandler<{ test: number }>();
+        let handler = createEventHandler<{ test: number }, undefined>(undefined);
         let lis = handler.consumer.on("test", () => { });
         expect(handler.producer.inUse('test')).equal(true);
         handler.consumer.off("test", lis);
         expect(handler.producer.inUse('test')).equal(false);
     });
     it('Checking if listener is removed from handler with multiple types', function () {
-        let handler = createEventHandler<{ test: number, test2: number, test3: number }>();
+        let handler = createEventHandler<{ test: number, test2: number, test3: number }, undefined>(undefined);
         let lis1 = handler.consumer.on("test", () => { });
         let lis2 = handler.consumer.on("test2", () => { });
         let lis3 = handler.consumer.on("test3", () => { });
@@ -59,7 +59,7 @@ describe('Adding and removing listeners', function () {
         expect(handler.producer.inUse('test') || handler.producer.inUse('test2') || handler.producer.inUse('test3')).equal(false);
     });
     it('Clearing listeners from handler', function () {
-        let handler = createEventHandler<{ test: number, test2: number, test3: number }>();
+        let handler = createEventHandler<{ test: number, test2: number, test3: number }, undefined>(undefined);
         handler.consumer.on("test", () => { });
         handler.consumer.on("test2", () => { });
         handler.consumer.on("test3", () => { });
@@ -73,10 +73,10 @@ describe('Adding and removing listeners', function () {
 
 describe('Dispatching event', function () {
     it('Checking if values are correct when dispatching event', function (done) {
-        let handler = createEventHandler<{ test: number }>();
+        let handler = createEventHandler<{ test: number }, undefined>(undefined);
         handler.consumer.on("test", (e) => {
             expect(e.type).equal('test');
-            expect(e.target).equal(handler);
+            expect(e.target).equal(undefined);
             expect(e.data).equal(10);
             done()
         });
@@ -84,12 +84,12 @@ describe('Dispatching event', function () {
     });
 
     it('Checking if values are correct when dispatching event with once option set true', function () {
-        let handler = createEventHandler<{ test: number }>();
+        let handler = createEventHandler<{ test: number }, undefined>(undefined);
         let cool = 0;
         handler.consumer.once("test", (e) => {
             cool++;
             expect(e.type).equal('test');
-            expect(e.target).equal(handler);
+            expect(e.target).equal(undefined);
             expect(e.data).equal(10);
         });
         handler.producer.emit('test', 10);
@@ -99,7 +99,7 @@ describe('Dispatching event', function () {
     });
 
     it('Checking amount of listners', function () {
-        let handler = createEventHandler<{ test: number }>();
+        let handler = createEventHandler<{ test: number }, undefined>(undefined);
         handler.consumer.on("test", () => { });
         handler.consumer.on("test", () => { });
         handler.consumer.on("test", () => { });
@@ -114,7 +114,7 @@ describe('Target override', function () {
             test1: 5,
             test2: 'string'
         }
-        let handler = createEventHandler<{ test: number }, typeof target>();
+        let handler = createEventHandler<{ test: number }, typeof target>(target);
         handler.producer.target = target;
         handler.consumer.on("test", (e) => {
             expect(e.type).equal('test');
