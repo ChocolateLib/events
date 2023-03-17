@@ -1,87 +1,100 @@
 /**Event class
  * contains the needed data to dispatch an event*/
-export class E<Type, Handler, Data>{
-    /**Type of event */
-    public readonly type: Type;
-    /**Reference to */
-    public readonly target: Handler;
-    /**Data of event */
-    public readonly data: Data;
+export class E<Type, Target, Data>{
     /**Any data to pass to the event listeners must be given in the constructor*/
-    constructor(type: Type, target: Handler, data: Data) {
+    constructor(type: Type, target: Target, data: Data) {
         this.type = type;
         this.target = target;
         this.data = data;
     }
+    /**Type of event */
+    public readonly type: Type;
+    /**Reference to */
+    public readonly target: Target;
+    /**Data of event */
+    public readonly data: Data;
 }
 
-/**Listener function */
-export interface EListener<Type, Handler, Data> {
-    (event: E<Type, Handler, Data>): boolean | void;
+/**Function used to subscribe to event*/
+export type ESubscriber<Type, Target, Data> = (event: E<Type, Target, Data>) => boolean | void;
+
+export interface EventConsumer<Events extends {}, Target> {
+    /**This add the subscriber to the event handler*/
+    on<K extends keyof Events>(eventName: K, subscriber: ESubscriber<K, Target, Events[K]>): typeof subscriber
+    /**This add the subscriber to the event handler which is automatically removed at first call*/
+    once<K extends keyof Events>(eventName: K, subscriber: ESubscriber<K, Target, Events[K]>): typeof subscriber
+    /**This removes the subscriber from the event handler*/
+    off<K extends keyof Events>(eventName: K, subscriber: ESubscriber<K, Target, Events[K]>): typeof subscriber
 }
 
-/**Performs type override */
-type TargetOverride<Types extends {}, T> = T extends [never] ? EventHandler<Types> : T
-
-/*Simple event handler class
-should always be added as a property of another object*/
-export class EventHandler<Types extends {}, Target extends {} = [never]> {
+export interface EventProducer<Events extends {}, Target> extends EventConsumer<Events, Target> {
     /**Override for target */
     target: Target | undefined
-    /**Storage for event listeners*/
-    private eventHandler_ListenerStorage: { [K in keyof Types]?: EListener<K, TargetOverride<Types, Target>, Types[K]>[] } = {}
+    /**This dispatches the event, event data is frozen*/
+    emit<K extends keyof Events>(eventName: K, data: Events[K]): void
+    /**This removes all listeners of a type from the event handler*/
+    clear<K extends keyof Events>(eventName: K): void
+    /**Returns wether the type has listeners, true means it has at least a listener*/
+    inUse<K extends keyof Events>(eventName: K): boolean
+    /**Returns wether the type has a specific listeners, true means it has that listener*/
+    has<K extends keyof Events>(eventName: K, subscriber: ESubscriber<K, Target, Events[K]>): boolean
+    /**Returns the amount of listeners on that event*/
+    amount<K extends keyof Events>(eventName: K): number
+}
 
-    /**This add the listener to the event handler*/
-    on<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>) {
+export class EventHandler<Events extends {}, Target> implements EventProducer<Events, Target> {
+    constructor(target: Target) {
+        this.target = target;
+    }
+    target: Target
+    private eventHandler_ListenerStorage: { [K in keyof Events]?: ESubscriber<K, Target, Events[K]>[] } = {}
+
+    on<K extends keyof Events>(eventName: K, subscriber: ESubscriber<K, Target, Events[K]>): typeof subscriber {
         let typeListeners = this.eventHandler_ListenerStorage[eventName];
         if (typeListeners) {
-            let index = typeListeners.indexOf(listener);
+            let index = typeListeners.indexOf(subscriber);
             if (index == -1) {
-                typeListeners.push(listener);
+                typeListeners.push(subscriber);
             } else {
-                console.warn('Listener already in handler');
+                console.warn('Subscriber already in handler');
             }
         } else {
-            this.eventHandler_ListenerStorage[eventName] = [listener];
+            this.eventHandler_ListenerStorage[eventName] = [subscriber];
         }
-        return listener;
+        return subscriber;
     }
 
-    /**This add the listener to the event handler which is automatically removed at first call*/
-    once<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>) {
+    once<K extends keyof Events>(eventName: K, subscriber: ESubscriber<K, Target, Events[K]>) {
         this.on(eventName, function (e) {
-            listener(e);
+            subscriber(e);
             return true;
         });
-        return listener;
+        return subscriber;
     }
 
-    /**This removes the listener from the event handler*/
-    off<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>) {
+    off<K extends keyof Events>(eventName: K, subscriber: ESubscriber<K, Target, Events[K]>) {
         let typeListeners = this.eventHandler_ListenerStorage[eventName];
         if (typeListeners) {
-            let index = typeListeners.indexOf(listener);
+            let index = typeListeners.indexOf(subscriber);
             if (index != -1) {
                 typeListeners.splice(index, 1);
             } else {
-                console.warn('Listener not in handler');
+                console.warn('Subscriber not in handler');
             }
         }
-        return listener;
+        return subscriber;
     }
 
-    /**This dispatches the event, event data is frozen*/
-    emit<K extends keyof Types>(eventName: K, data: Types[K]) {
+    emit<K extends keyof Events>(eventName: K, data: Events[K]) {
         let funcs = this.eventHandler_ListenerStorage[eventName];
         if (funcs && funcs.length > 0) {
-            //@ts-expect-error
-            let event = Object.freeze(new E<K, TargetOverride<Types, Target>, Types[K]>(eventName, this.target || this, data));
+            let event = Object.freeze(new E<K, Target, Events[K]>(eventName, this.target, data));
             if (funcs.length > 1) {
                 funcs = [...funcs];
             }
             for (let i = 0, n = funcs.length; i < n; i++) {
                 try {
-                    if (funcs[i](event)) {
+                    if (funcs[i](event) === true) {
                         funcs.splice(i, 1);
                         n--;
                         i--;
@@ -93,34 +106,30 @@ export class EventHandler<Types extends {}, Target extends {} = [never]> {
         }
     }
 
-    /**This removes all listeners of a type from the event handler*/
-    clear<K extends keyof Types>(eventName: K) {
+    clear<K extends keyof Events>(eventName: K): void {
         this.eventHandler_ListenerStorage[eventName] = [];
     }
 
-    /**Returns wether the type has listeners, true means it has at least a listener*/
-    inUse<K extends keyof Types>(eventName: K) {
+    inUse<K extends keyof Events>(eventName: K): boolean {
         return Boolean(this.eventHandler_ListenerStorage[eventName]?.length);
     }
 
-    /**Returns wether the type has a specific listeners, true means it has that listener*/
-    has<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>) {
-        return Boolean(this.eventHandler_ListenerStorage[eventName]?.indexOf(listener) !== -1);
+    has<K extends keyof Events>(eventName: K, subscriber: ESubscriber<K, Target, Events[K]>): boolean {
+        return Boolean(this.eventHandler_ListenerStorage[eventName]?.indexOf(subscriber) !== -1);
     }
 
-    /**Returns the amount of listeners on that event*/
-    amount<K extends keyof Types>(eventName: K) {
+    amount<K extends keyof Events>(eventName: K): number {
         return this.eventHandler_ListenerStorage[eventName]?.length || 0;
-    }
-
-    /**Returns the eventhandler with only the event user methods */
-    get eventsUserOnly(): EventHandlerUserOnly<Types, Target> {
-        return this
     }
 }
 
-export interface EventHandlerUserOnly<Types extends {}, Target> {
-    on<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>): EListener<K, TargetOverride<Types, Target>, Types[K]>
-    once<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>): EListener<K, TargetOverride<Types, Target>, Types[K]>
-    off<K extends keyof Types>(eventName: K, listener: EListener<K, TargetOverride<Types, Target>, Types[K]>): EListener<K, TargetOverride<Types, Target>, Types[K]>
+/**Creates an event handler
+ * @param target is the owner of the event handler, the event consumers might need this to perform their actions*/
+export const createEventHandler = <Events extends {}, Target>(target: Target) => {
+    let handler = new EventHandler(target);
+    handler.target = target;
+    return {
+        producer: handler as EventProducer<Events, Target>,
+        consumer: handler as EventConsumer<Events, Target>,
+    }
 }

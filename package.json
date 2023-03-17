@@ -1,6 +1,6 @@
 {
   "name": "@chocolatelib/events",
-  "version": "0.0.7",
+  "version": "0.0.9",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,20 +9,26 @@
     "dist"
   ],
   "scripts": {
-    "build": "rollup -c",
-    "test": "jest",
-    "prepublishOnly": "npm run test && npm run build"
+    "dev:pages": "vite -m pages",
+    "dev:tests": "vite -m test",
+    "build:lib": "tsc && vite build -m lib",
+    "build:pages": "tsc && vite build -m pages",
+    "build:tests": "tsc && vite build -m tests",
+    "serve:dev": "vite preview --mode pages",
+    "serve:tests": "vite preview --mode testServe",
+    "test": "yarn run build:tests && start-server-and-test serve:tests http://localhost:999 'cypress run'",
+    "watch": "start-server-and-test dev:tests http://localhost:999 'cypress open --e2e --browser edge'",
+    "prepublishOnly": "yarn run test && yarn run build:lib && yarn run build:pages"
   },
   "devDependencies": {
-    "@jest/globals": "^29.2.3",
-    "@rollup/plugin-typescript": "^10.0.1",
-    "@types/jest": "^29.2.3",
-    "jest": "^29.3.1",
-    "rollup": "^3.5.0",
-    "rollup-plugin-dts": "^5.0.0",
-    "ts-jest": "^29.0.3",
+    "cypress": "^11.2.0",
+    "cypress-vite": "^1.2.1",
+    "start-server-and-test": "^1.14.0",
     "tslib": "^2.4.1",
-    "typescript": "^4.9.3"
+    "typescript": "^4.9.3",
+    "vite": "^3.2.3",
+    "vite-plugin-dts": "^1.7.1",
+    "vite-plugin-libcss": "^1.0.5"
   },
   "author": "chocolateandmilkwin",
   "license": "Apache-2.0",
@@ -33,5 +39,6 @@
   "bugs": {
     "url": "https://github.com/ChocolateLib/events/issues"
   },
-  "homepage": "https://github.com/ChocolateLib/events#readme"
+  "homepage": "https://github.com/ChocolateLib/events#readme",
+  "dependencies": {}
 }

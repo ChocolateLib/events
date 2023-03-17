@@ -1,17 +1,32 @@
 {
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
   ],
   "exclude": [
     "dist",
     "node_modules"
   ],
   "compilerOptions": {
-    "target": "esnext",
+    "target": "ESNext",
     "module": "ESNext",
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
+    "types": [
+      "cypress"
+    ],
+    "moduleResolution": "Node",
     "strict": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
     "esModuleInterop": true,
+    "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
     "skipLibCheck": true,
+    "useDefineForClassFields": false,
     "forceConsistentCasingInFileNames": true,
   }
 }

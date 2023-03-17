@@ -8,6 +8,10 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
-package-lock.json
 yarn.lock
+
+dist
+!pages/dist
+
+cypress/videos
+cypress/pages/dist
